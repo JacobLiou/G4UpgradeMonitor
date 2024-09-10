@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="IEC104\**" />
+    <Compile Remove="Modbus\AppModels\**" />
+    <EmbeddedResource Remove="IEC104\**" />
+    <EmbeddedResource Remove="Modbus\AppModels\**" />
+    <None Remove="IEC104\**" />
+    <None Remove="Modbus\AppModels\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Service\DeviceTime225Service.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\newproject\Sofar.ProtocolLibs\Sofar.ProtocolLibs.csproj" />
+    <ProjectReference Include="..\Sofar.Common\Sofar.Common.csproj" />
+  </ItemGroup>
+
+</Project>
