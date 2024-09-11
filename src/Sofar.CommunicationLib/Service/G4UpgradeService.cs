@@ -10,9 +10,15 @@ namespace Sofar.CommunicationLib.Service
 {
     public class G4UpgradeService
     {
-        public static ILogger _logger => Log.Logger;
+        private ILogger _logger => Log.Logger;
 
-        protected static SofarModbusClient? _modbusClient;
+        private SofarModbusClient? _modbusClient;
+
+        public G4UpgradeService(SofarModbusClient modbusClient)
+        {
+            _modbusClient = modbusClient;
+        }
+
         private class G4UpgradeContext
         {
             public byte[] SlavesList;

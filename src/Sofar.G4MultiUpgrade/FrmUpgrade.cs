@@ -1,4 +1,5 @@
 ﻿using Serilog;
+using Sofar.CommunicationLib;
 using Sofar.CommunicationLib.Model;
 using Sofar.CommunicationLib.Service;
 using Sofar.ProtocolLibs.FirmwareInfo;
@@ -12,8 +13,7 @@ namespace Sofar.G4MultiUpgrade
 
         private SofarSubFirmwareInfo[]? _subModuleInfos;
 
-        //private G4UpgradeService _upgradeService = new();
-        private List<G4UpgradeService> upgradeService = new();
+        private List<G4UpgradeService> _upgradeService;
 
         private readonly ILogger _logger = Serilog.Log.Logger;
 
@@ -22,6 +22,12 @@ namespace Sofar.G4MultiUpgrade
         public FrmUpgrade()
         {
             InitializeComponent();
+
+            _upgradeService = new();
+            foreach (var item in CommManager.Instance.ModbusClients)
+            {
+                _upgradeService.Add(new G4UpgradeService(item));
+            }
         }
 
         private void FrmUpgrade_Load(object sender, EventArgs e)
@@ -106,7 +112,7 @@ namespace Sofar.G4MultiUpgrade
         {
             Task.Run(async () =>
             {
-                foreach (var item in upgradeService)
+                foreach (var item in _upgradeService)
                 {
                     await SingUpgrade(item);
                 }
