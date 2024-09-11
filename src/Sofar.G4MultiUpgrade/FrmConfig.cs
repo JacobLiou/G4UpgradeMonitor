@@ -1,12 +1,13 @@
 ﻿using Sofar.CommunicationLib;
 using Sofar.CommunicationLib.Model;
 using Sofar.G4MultiUpgrade.Common;
+using Sunny.UI;
 using System.Diagnostics;
 using System.Net;
 
 namespace Sofar.G4MultiUpgrade
 {
-    public partial class FrmConfig : Form
+    public partial class FrmConfig : UIForm
     {
         private ConnectionParams? _connectParams;
 
@@ -109,6 +110,16 @@ namespace Sofar.G4MultiUpgrade
             {
                 rtbPrintinfo.Text += $"{DateTime.Now.ToString("HH:mm:ss.fff")} {message}\n";
             }));
+        }
+
+        private void uiButton_OK_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void uiButton_Cancel_Click(object sender, EventArgs e)
+        {
+            this.DialogResult= DialogResult.Cancel;
         }
     }
 }

@@ -7,11 +7,9 @@ namespace Sofar.CommunicationLib
 {
     public class CommManager
     {
-        public event EventHandler ConnectionStatusChanged;
-
         public ConnectionParams ConnectionParams { get; set; }
 
-        public List<SofarModbusClient> ModbusClients { get; set; }
+        public List<SofarModbusClient> ModbusClients { get; set; } = new();
 
         #region Singleton
 

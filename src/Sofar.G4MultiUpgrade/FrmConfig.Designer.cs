@@ -28,108 +28,132 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.txtIpPort = new System.Windows.Forms.TextBox();
-            this.txtIpAddress = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.nudNumber = new System.Windows.Forms.NumericUpDown();
-            this.btnConnect = new System.Windows.Forms.Button();
-            this.rtbPrintinfo = new System.Windows.Forms.RichTextBox();
-            ((System.ComponentModel.ISupportInitialize)(this.nudNumber)).BeginInit();
-            this.SuspendLayout();
+            txtIpPort = new TextBox();
+            txtIpAddress = new TextBox();
+            label6 = new Label();
+            label1 = new Label();
+            nudNumber = new NumericUpDown();
+            btnConnect = new Button();
+            rtbPrintinfo = new RichTextBox();
+            uiButton_OK = new Sunny.UI.UIButton();
+            uiButton_Cancel = new Sunny.UI.UIButton();
+            ((System.ComponentModel.ISupportInitialize)nudNumber).BeginInit();
+            SuspendLayout();
             // 
             // txtIpPort
             // 
-            this.txtIpPort.Location = new System.Drawing.Point(239, 22);
-            this.txtIpPort.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.txtIpPort.Name = "txtIpPort";
-            this.txtIpPort.Size = new System.Drawing.Size(75, 23);
-            this.txtIpPort.TabIndex = 11;
-            this.txtIpPort.Text = "502";
+            txtIpPort.Location = new Point(350, 52);
+            txtIpPort.Margin = new Padding(5, 4, 5, 4);
+            txtIpPort.Name = "txtIpPort";
+            txtIpPort.Size = new Size(95, 25);
+            txtIpPort.TabIndex = 11;
+            txtIpPort.Text = "502";
             // 
             // txtIpAddress
             // 
-            this.txtIpAddress.Location = new System.Drawing.Point(91, 22);
-            this.txtIpAddress.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.txtIpAddress.Name = "txtIpAddress";
-            this.txtIpAddress.Size = new System.Drawing.Size(140, 23);
-            this.txtIpAddress.TabIndex = 10;
-            this.txtIpAddress.Text = "127.0.0.1";
+            txtIpAddress.Location = new Point(160, 52);
+            txtIpAddress.Margin = new Padding(5, 4, 5, 4);
+            txtIpAddress.Name = "txtIpAddress";
+            txtIpAddress.Size = new Size(179, 25);
+            txtIpAddress.TabIndex = 10;
+            txtIpAddress.Text = "127.0.0.1";
             // 
             // label6
             // 
-            this.label6.AutoSize = true;
-            this.label6.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.label6.Location = new System.Drawing.Point(21, 25);
-            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(43, 17);
-            this.label6.TabIndex = 8;
-            this.label6.Text = "IP地址";
+            label6.AutoSize = true;
+            label6.ImeMode = ImeMode.NoControl;
+            label6.Location = new Point(70, 58);
+            label6.Margin = new Padding(5, 0, 5, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(53, 15);
+            label6.TabIndex = 8;
+            label6.Text = "IP地址";
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(21, 59);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(56, 17);
-            this.label1.TabIndex = 12;
-            this.label1.Text = "连续个数";
+            label1.AutoSize = true;
+            label1.Location = new Point(70, 94);
+            label1.Margin = new Padding(5, 0, 5, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(67, 15);
+            label1.TabIndex = 12;
+            label1.Text = "连续个数";
             // 
             // nudNumber
             // 
-            this.nudNumber.Location = new System.Drawing.Point(91, 57);
-            this.nudNumber.Margin = new System.Windows.Forms.Padding(4);
-            this.nudNumber.Name = "nudNumber";
-            this.nudNumber.Size = new System.Drawing.Size(140, 23);
-            this.nudNumber.TabIndex = 14;
-            this.nudNumber.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
+            nudNumber.Location = new Point(160, 88);
+            nudNumber.Margin = new Padding(5);
+            nudNumber.Name = "nudNumber";
+            nudNumber.Size = new Size(180, 25);
+            nudNumber.TabIndex = 14;
+            nudNumber.Value = new decimal(new int[] { 1, 0, 0, 0 });
             // 
             // btnConnect
             // 
-            this.btnConnect.Location = new System.Drawing.Point(327, 20);
-            this.btnConnect.Margin = new System.Windows.Forms.Padding(4);
-            this.btnConnect.Name = "btnConnect";
-            this.btnConnect.Size = new System.Drawing.Size(75, 27);
-            this.btnConnect.TabIndex = 16;
-            this.btnConnect.Text = "连接";
-            this.btnConnect.UseVisualStyleBackColor = true;
-            this.btnConnect.Click += new System.EventHandler(this.btnConnect_Click);
+            btnConnect.Location = new Point(463, 52);
+            btnConnect.Margin = new Padding(5);
+            btnConnect.Name = "btnConnect";
+            btnConnect.Size = new Size(96, 32);
+            btnConnect.TabIndex = 16;
+            btnConnect.Text = "连接";
+            btnConnect.UseVisualStyleBackColor = true;
+            btnConnect.Click += btnConnect_Click;
             // 
             // rtbPrintinfo
             // 
-            this.rtbPrintinfo.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.rtbPrintinfo.Location = new System.Drawing.Point(0, 102);
-            this.rtbPrintinfo.Name = "rtbPrintinfo";
-            this.rtbPrintinfo.Size = new System.Drawing.Size(691, 322);
-            this.rtbPrintinfo.TabIndex = 17;
-            this.rtbPrintinfo.Text = "";
+            rtbPrintinfo.Location = new Point(48, 134);
+            rtbPrintinfo.Margin = new Padding(4);
+            rtbPrintinfo.Name = "rtbPrintinfo";
+            rtbPrintinfo.Size = new Size(888, 355);
+            rtbPrintinfo.TabIndex = 17;
+            rtbPrintinfo.Text = "";
+            // 
+            // uiButton_OK
+            // 
+            uiButton_OK.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            uiButton_OK.Location = new Point(277, 516);
+            uiButton_OK.MinimumSize = new Size(1, 1);
+            uiButton_OK.Name = "uiButton_OK";
+            uiButton_OK.Size = new Size(125, 34);
+            uiButton_OK.TabIndex = 18;
+            uiButton_OK.Text = "确认";
+            uiButton_OK.TipsFont = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            uiButton_OK.Click += uiButton_OK_Click;
+            // 
+            // uiButton_Cancel
+            // 
+            uiButton_Cancel.Font = new Font("宋体", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            uiButton_Cancel.Location = new Point(488, 516);
+            uiButton_Cancel.MinimumSize = new Size(1, 1);
+            uiButton_Cancel.Name = "uiButton_Cancel";
+            uiButton_Cancel.Size = new Size(125, 34);
+            uiButton_Cancel.TabIndex = 18;
+            uiButton_Cancel.Text = "取消";
+            uiButton_Cancel.Click += uiButton_Cancel_Click;
             // 
             // FrmConfig
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(691, 424);
-            this.Controls.Add(this.rtbPrintinfo);
-            this.Controls.Add(this.btnConnect);
-            this.Controls.Add(this.nudNumber);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.txtIpPort);
-            this.Controls.Add(this.txtIpAddress);
-            this.Controls.Add(this.label6);
-            this.Margin = new System.Windows.Forms.Padding(4);
-            this.Name = "FrmConfig";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "FrmLogin";
-            ((System.ComponentModel.ISupportInitialize)(this.nudNumber)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
-
+            AutoScaleMode = AutoScaleMode.None;
+            ClientSize = new Size(975, 562);
+            Controls.Add(uiButton_Cancel);
+            Controls.Add(uiButton_OK);
+            Controls.Add(rtbPrintinfo);
+            Controls.Add(btnConnect);
+            Controls.Add(nudNumber);
+            Controls.Add(label1);
+            Controls.Add(txtIpPort);
+            Controls.Add(txtIpAddress);
+            Controls.Add(label6);
+            Font = new Font("宋体", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            Margin = new Padding(5);
+            MaximizeBox = false;
+            MinimizeBox = false;
+            Name = "FrmConfig";
+            Text = "通讯配置";
+            ZoomScaleRect = new Rectangle(19, 19, 888, 499);
+            ((System.ComponentModel.ISupportInitialize)nudNumber).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -141,5 +165,7 @@
         private System.Windows.Forms.NumericUpDown nudNumber;
         private System.Windows.Forms.Button btnConnect;
         private RichTextBox rtbPrintinfo;
+        private Sunny.UI.UIButton uiButton_OK;
+        private Sunny.UI.UIButton uiButton_Cancel;
     }
 }
