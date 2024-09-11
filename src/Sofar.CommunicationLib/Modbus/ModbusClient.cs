@@ -9,13 +9,13 @@ namespace Sofar.CommunicationLib.Modbus
 {
     public class ModbusClient
     {
-        protected TinyBytesStream CommStream;
-
         protected int _frameBaseSize;     // PDU以外的大小
 
         protected int _frameHeaderSize;   // 功能码之前的大小
 
         private ModbusFrameType _frameType;
+
+        public TinyBytesStream CommStream { get; }
 
         public ModbusFrameType FrameType
         {

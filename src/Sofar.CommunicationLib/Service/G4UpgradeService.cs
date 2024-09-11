@@ -1,13 +1,18 @@
-﻿using Sofar.CommunicationLib.Service.AppModels;
+﻿using Serilog;
+using Sofar.CommunicationLib.Modbus;
+using Sofar.CommunicationLib.Model;
 using Sofar.ProtocolLibs.FirmwareInfo;
 using Sofar.ProtocolLibs.Modbus.Message.Sofar;
 using Sofar.ProtocolLibs.Utils.CRC;
 using System.Diagnostics;
 
-namespace Sofar.CommunicationLib.Service.FileTransfer
+namespace Sofar.CommunicationLib.Service
 {
-    public class G4UpgradeService : ServiceBase
+    public class G4UpgradeService
     {
+        public static ILogger _logger => Log.Logger;
+
+        protected static SofarModbusClient? _modbusClient;
         private class G4UpgradeContext
         {
             public byte[] SlavesList;

@@ -1,4 +1,4 @@
-﻿namespace Sofar.CommunicationLib.Service.AppModels
+﻿namespace Sofar.CommunicationLib.Model
 {
     public class InverterInfo
     {

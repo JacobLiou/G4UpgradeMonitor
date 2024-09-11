@@ -17,4 +17,10 @@
     <ProjectReference Include="..\Sofar.CommunicationLib\Sofar.CommunicationLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Config\Connection.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

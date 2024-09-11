@@ -1,6 +1,6 @@
 ﻿using Sofar.ProtocolLibs.FirmwareInfo;
 
-namespace Sofar.CommunicationLib.Service.AppModels
+namespace Sofar.CommunicationLib.Model
 {
     public class G4UpgradeConfig
     {

@@ -5,7 +5,7 @@ namespace Sofar.G4MultiUpgrade.Common
 {
     internal class JsonFileHelper
     {
-        private static readonly string _saveFolder = Path.Combine(Application.StartupPath, "config");
+        private static readonly string _saveFolder = Path.Combine(Application.StartupPath, "Config");
 
         public static void SaveConfig(string fileName, object? obj)
         {

@@ -1,6 +1,6 @@
 ﻿using Serilog;
-using Sofar.CommunicationLib.Service.AppModels;
-using Sofar.CommunicationLib.Service.FileTransfer;
+using Sofar.CommunicationLib.Model;
+using Sofar.CommunicationLib.Service;
 using Sofar.ProtocolLibs.FirmwareInfo;
 using System.Diagnostics;
 

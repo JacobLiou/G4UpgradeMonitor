@@ -26,11 +26,12 @@ namespace Sofar.CommunicationLib.Connection
             Close();
         }
 
-        public void Connect(int timeoutMs = 2000)
+        public bool Connect(int timeoutMs = 2000)
         {
             if (!Socket.ConnectAsync(RemoteEndPoint).Wait(timeoutMs))
-                throw new TimeoutException("Socket Connection Timeout.");
+                return false;
             Socket.Blocking = false;
+            return true;
         }
 
         public void Close()
@@ -135,8 +136,7 @@ namespace Sofar.CommunicationLib.Connection
                 try
                 {
                     Socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    Connect();
-                    return true;
+                    return Connect();
                 }
                 catch (Exception ex)
                 {
