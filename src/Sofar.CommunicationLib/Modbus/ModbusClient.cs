@@ -173,6 +173,7 @@ namespace Sofar.CommunicationLib.Modbus
                         break;
 
                     case ModbusFrameType.TCP:
+                        DoTcpTransaction(slave, requestPdu, out response, rxTimeoutMs);
                         break;
 
                     case ModbusFrameType.ASCII:
@@ -255,10 +256,69 @@ namespace Sofar.CommunicationLib.Modbus
             response = rxBytes.Skip(msgOffset).Take(msgSize).ToArray();
         }
 
-        protected void DoTcpTransaction(byte slave, RequestPDU request, out byte[] response, int rxTimeoutMs)
+        protected ushort TcpFrameSeqNo = 0;    // Transaction Identifier of TCP frame.
+        protected void DoTcpTransaction(byte slave, RequestPDU requestPdu, out byte[] responseBytes, int rxTimeoutMs)
         {
-            throw new NotImplementedException();
+            responseBytes = Array.Empty<byte>();
+            var txSeqNo = TcpFrameSeqNo++;
+            var requestBytes = ModbusFramer.ProduceTcpFrameBytes(txSeqNo, slave, requestPdu);
+            int? expectedRxLen = ModbusFramer.GetResponseFrameSize(requestPdu, ModbusFrameType.TCP);
+
+            Send(requestBytes);
+            if (slave == 0)
+                return;
+
+            long txTimestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+            ReceiveOneFrame(txTimestamp, rxTimeoutMs, out byte[] rxBytes, expectedRxLen);
+
+            bool parseResult = false;
+            int msgOffset = 0, msgSize = 0;
+            for (int p = 0; p < rxBytes.Length; p++)
+            {
+                if (rxBytes.Length - p < 6 + 3)
+                    break;
+
+                ushort rxSeqNo = (ushort)(rxBytes[p] << 8 | rxBytes[p + 1]);
+                ushort protocolId = (ushort)(rxBytes[p + 2] << 8 | rxBytes[p + 3]);
+                ushort followedLen = (ushort)(rxBytes[p + 4] << 8 | rxBytes[p + 5]);
+                byte rxSlave = rxBytes[p + 6];
+                byte rxFuncCode = rxBytes[p + 7];
+                // byte rxSubFuncCode = rxBytes[p + 8];  // if exists
+
+                if (rxSeqNo != txSeqNo || protocolId != 0)
+                {
+                    continue;
+                }
+
+                if (rxSlave != slave
+                    && !(rxSlave == 0 && rxFuncCode == 0x52)) // G4协议0x52 
+                {
+                    continue;
+                }
+
+                if (p + 6 + followedLen <= rxBytes.Length)
+                {
+                    msgOffset = p;
+                    msgSize = 6 + followedLen;
+                    parseResult = true;
+
+                    if (rxFuncCode == 0x90 || rxFuncCode == requestPdu.FunctionCode + 0x80)
+                    {
+                        RaiseModbusException(new ModbusErrorResponse(rxBytes, p + ModbusFramer.GetHeaderSize(_frameType),
+                            msgSize - ModbusFramer.GetBaseSize(_frameType)));
+                    }
+
+                    break;
+                }
+            }
+
+            if (!parseResult)
+                throw new ModbusException("The incoming message is invalid.", ModbusStandardError.None);
+
+            responseBytes = rxBytes.Skip(msgOffset).Take(msgSize).ToArray();
+            return;
         }
+
 
         // Return null if broadcast(slave=0), return response entity if finished successful transaction, else raise exception
         protected TResponse? Execute<TRequest, TResponse>(byte slave, TRequest requestEntity, int rxTimeoutMs)

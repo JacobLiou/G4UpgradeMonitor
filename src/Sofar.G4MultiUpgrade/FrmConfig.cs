@@ -42,27 +42,63 @@ namespace Sofar.G4MultiUpgrade
         {
             try
             {
-                if (this.btnConnect.Text == "断开连接")
+                if (this.btnConnect.Text == "连接")
                 {
                     _connectParams.IPAdressList.Clear();
                     _connectParams.Port = int.Parse(txtIpPort.Text);
 
                     int continueNum = Convert.ToUInt16(nudNumber.Value);
                     string ip = txtIpAddress.Text.Trim();
-                    _connectParams.IPAdressList.Add(ip);
+                    //_connectParams.IPAdressList.Add(ip);
                     for (int i = 1; i <= continueNum; i++)
                     {
-                        var nextIp = IncrementLastOctet(ip);
-                        _connectParams.IPAdressList.Add(nextIp);
+                        _connectParams.IPAdressList.Add(ip);
+
+                        ip = IncrementLastOctet(ip);    //计算下一个IP地址
                     }
 
-                    if (CommManager.Instance.Connect(_connectParams))
-                        this.btnConnect.Text = "连接";
+                    var _array = new Dictionary<string, bool>();
+
+                    if (CommManager.Instance.Connect(_connectParams,out _array))
+                    {
+                        this.btnConnect.Text = "断开连接";
+                        ConnectArray = _array;
+                    }
                     else
-                        MessageBox.Show("启动连接错误");
+                    {
+                        //再次检查
+                        bool checkReuslt = false;
+                        foreach (var item in _array)
+                        {
+                            if (item.Value)
+                            {
+                                checkReuslt = true;
+                                ConnectArray.TryAdd(item.Key, true);
+                            }
+                            else if(!item.Value && ConnectArray.ContainsKey(item.Key))
+                            {
+                               ConnectArray.Remove(item.Key);
+                            }
+                        }
+
+                        if (checkReuslt)
+                        {
+                            this.btnConnect.Text = "断开连接";
+                        }
+                        else
+                        {
+                            MessageBox.Show("启动连接错误");
+                        }
+                    }
+
+                    foreach (var item in ConnectArray)
+                    {
+                        rtbPrintinfo.Text += $"IP:{item.Key},连接成功 \r\n";
+                    }
                 }
-                else if (this.btnConnect.Text == "连接")
+                else if (this.btnConnect.Text == "断开连接")
                 {
+                    this.btnConnect.Text = "连接";
                     CommManager.Instance.DisConnect();
                 }
             }

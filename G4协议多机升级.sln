@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sofar.G4MultiUpgrade", "src
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sofar.CommunicationLib", "src\Sofar.CommunicationLib\Sofar.CommunicationLib.csproj", "{B6D06328-2C40-4019-BACF-05A62A6FCACC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sofar.ConnectionLibs", "..\newproject\Sofar.ConnectionLibs\Sofar.ConnectionLibs.csproj", "{BD8D8481-FBB3-43B9-84BE-2F4B87758400}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,12 +37,17 @@ Global
 		{B6D06328-2C40-4019-BACF-05A62A6FCACC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6D06328-2C40-4019-BACF-05A62A6FCACC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6D06328-2C40-4019-BACF-05A62A6FCACC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD8D8481-FBB3-43B9-84BE-2F4B87758400}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD8D8481-FBB3-43B9-84BE-2F4B87758400}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD8D8481-FBB3-43B9-84BE-2F4B87758400}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD8D8481-FBB3-43B9-84BE-2F4B87758400}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5889D54D-9A69-405E-827E-E8851D5FA66A} = {DB6FB9D4-94E6-4D43-808F-6186ADDEA2DB}
+		{BD8D8481-FBB3-43B9-84BE-2F4B87758400} = {DB6FB9D4-94E6-4D43-808F-6186ADDEA2DB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3DC99B1C-4243-476D-A342-5A0FC9C5E7CB}

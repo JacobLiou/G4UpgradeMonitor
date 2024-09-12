@@ -4,6 +4,8 @@ using Sofar.CommunicationLib.Service;
 using Sofar.ProtocolLibs.FirmwareInfo;
 using Sunny.UI;
 using System.Diagnostics;
+using System.Text;
+using System.Windows.Forms;
 using ILogger = Serilog.ILogger;
 
 namespace Sofar.G4MultiUpgrade
@@ -11,16 +13,6 @@ namespace Sofar.G4MultiUpgrade
     public partial class FrmMain : UIForm
     {
         private System.Timers.Timer? timer;
-
-        private string? _firmwarePath;
-
-        private SofarSubFirmwareInfo[]? _subModuleInfos;
-
-        private List<G4UpgradeService>? _upgradeService;
-
-        private readonly ILogger _logger = Serilog.Log.Logger;
-
-        public bool IsUpgrading { get; private set; } = false;
 
         public FrmMain()
         {
@@ -45,6 +37,15 @@ namespace Sofar.G4MultiUpgrade
             timer.AutoReset = true;
             timer.Elapsed += Timer_Elapsed;
             timer.Start();
+
+            // 加载通讯列表...
+
+            // 创建ListView的列
+            lvConnectlist.View = View.Details;
+            lvConnectlist.Columns.Add("IpAddress", 120);
+            lvConnectlist.Columns.Add("State", 50);
+
+            BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
         }
 
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -98,17 +99,18 @@ namespace Sofar.G4MultiUpgrade
             }
         }
 
-        private void FrmUpgrade_Load(object sender, EventArgs e)
-        {
-            // 加载通讯列表...
+        private string? _firmwarePath;
 
-            // 创建ListView的列
-            lvConnectlist.View = View.Details;
-            lvConnectlist.Columns.Add("IpAddress", 120);
-            lvConnectlist.Columns.Add("State", 50);
+        private SofarSubFirmwareInfo[]? _subModuleInfos;
 
-            BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
-        }
+        private List<G4UpgradeService> _upgradeService;
+
+        private readonly ILogger _logger = Serilog.Log.Logger;
+
+        private readonly List<G4InverterUpgradeInfo> _invertersInfos = new();
+
+
+        public bool IsUpgrading { get; private set; } = false;
 
         private void BindDictionaryToListView(Dictionary<string, bool> dict, ListView listView)
         {
@@ -174,7 +176,7 @@ namespace Sofar.G4MultiUpgrade
         #region 升级启停
 
         private G4UpgradeStage _globalStage = G4UpgradeStage.None;
-        private CancellationTokenSource? _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
 
         private void btnStartUpgrade_Click(object sender, EventArgs e)
         {
@@ -201,10 +203,9 @@ namespace Sofar.G4MultiUpgrade
                 return;
             }
 
+            byte[] slaves = { 0x01 };
             //if (!GetDeviceAddresses(out byte[] slaves))
-            //{
             //    return;
-            //}
 
             IsUpgrading = true;
             ClearUpgradeMsg();
@@ -225,10 +226,10 @@ namespace Sofar.G4MultiUpgrade
                 Use5108 = false,
             };
 
-            var readFinishedList = new byte[] { };//await ReadDeviceInfo(slaves);
+            //var readFinishedList = await ReadDeviceInfo(slaves);
 
             var pgReporter = new Progress<G4UpgradeProgressInfo>();
-            //pgReporter.ProgressChanged += PgReporter_OnProgressChanged;
+            pgReporter.ProgressChanged += PgReporter_OnProgressChanged;
             _cancellationTokenSource = new CancellationTokenSource();
 
             try
@@ -239,42 +240,8 @@ namespace Sofar.G4MultiUpgrade
                 // 升级
                 _globalStage = G4UpgradeStage.None;
 
-                await _upgradeService.G4FirmwareUpgradeAsync(readFinishedList, _firmwarePath!, upgradeConfig,
+                await _upgradeService.G4FirmwareUpgradeAsync(new byte[] { 0x01 }, _firmwarePath!, upgradeConfig,
                     _cancellationTokenSource.Token, pgReporter);
-
-                /*
-                // 等待复位并重读版本号
-                if (!_cancellationTokenSource.IsCancellationRequested
-                    && _globalStage >= G4UpgradeStage.Finished)
-                {
-                    for (int i = 30; i >= 0; i--)
-                    {
-                        for (int j = 0; j < _invertersInfos.Count; j++)
-                        {
-                            _invertersInfos[j].StatusMsg = $"等待设备复位[{i}s]";
-                        }
-                        RefreshInvertersGrid();
-                        await Task.Delay(1000);
-                    }
-
-                    readFinishedList = await ReadDeviceInfo(readFinishedList);
-                    for (int i = 0; i < _invertersInfos.Count; i++)
-                    {
-                        if (!readFinishedList.Contains(_invertersInfos[i].SlaveNo))
-                            continue;
-
-                        string? versionsHint = CompareVersions(i);
-                        if (!string.IsNullOrEmpty(versionsHint))
-                        {
-                            _invertersInfos[i].StatusMsg = $"升级失败：{versionsHint}";
-                        }
-                        else
-                        {
-                            _invertersInfos[i].StatusMsg = "升级成功";
-                        }
-                    }
-                    RefreshInvertersGrid();
-                }*/
 
                 var timeSpan = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds).ToString("%m");
                 AppendUpgradeMsg($"操作总耗时：{timeSpan}Min");
@@ -293,7 +260,243 @@ namespace Sofar.G4MultiUpgrade
             }
         }
 
-        private void StopUpgrade_Button_Click(object sender, EventArgs e)
+
+        private void PgReporter_OnProgressChanged(object? sender, G4UpgradeProgressInfo pgInfo)
+        {
+            string stepName = pgInfo.Stage switch
+            {
+                G4UpgradeStage.None => "",
+                G4UpgradeStage.RequestToSendFile => "请求发送固件",
+                G4UpgradeStage.SendingFile => "发包",
+                G4UpgradeStage.ResendingLostPacks => "补包",
+                G4UpgradeStage.Verification => "固件校验",
+                G4UpgradeStage.StartUpgrade => "启动升级",
+                G4UpgradeStage.CheckProgress => "查询进度",
+                G4UpgradeStage.Finished => "升级完成",
+                G4UpgradeStage.SetAlarm => "设置升级时间",
+                G4UpgradeStage.Cancelled => "取消升级",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            byte slave = pgInfo.Slave;
+            int idx = _invertersInfos.FindIndex(x => x.SlaveNo == slave);
+            if (idx < 0) return;
+
+            if (pgInfo.Failed)
+            {
+                if (pgInfo.Stage == G4UpgradeStage.Cancelled)
+                {
+                    _invertersInfos[idx].StatusMsg = "升级已取消";
+                    //AppendUpgradeMsg($"升级已取消。");
+
+                }
+                else
+                {
+                    _invertersInfos[idx].StatusMsg = $"升级失败。步骤：{stepName}";
+                    _logger.Error($"[设备{pgInfo.Slave}][升级失败] {pgInfo.Message}\n");
+                }
+                RefreshInvertersGrid();
+                return;
+            }
+
+            int pgValue = pgInfo.Progress;
+            switch (pgInfo.Stage)
+            {
+                case G4UpgradeStage.None:
+                    break;
+                case G4UpgradeStage.RequestToSendFile:
+                    _invertersInfos[idx].StatusMsg = $"准备传输固件";
+                    break;
+                case G4UpgradeStage.SendingFile:
+                    _invertersInfos[idx].StatusMsg = $"传输固件({pgValue}%)";
+                    break;
+                case G4UpgradeStage.ResendingLostPacks:
+                    _invertersInfos[idx].StatusMsg = $"补包({pgValue}%)";
+                    break;
+                case G4UpgradeStage.Verification:
+                    _invertersInfos[idx].StatusMsg = $"固件校验成功";
+                    break;
+                case G4UpgradeStage.StartUpgrade:
+                    _invertersInfos[idx].StatusMsg = $"启动升级成功";
+                    break;
+                case G4UpgradeStage.CheckProgress:
+                    UpdateProgressString(idx, pgInfo.FileType, pgInfo.ChipRole, $"{pgValue}%");
+                    break;
+                case G4UpgradeStage.Finished:
+                    UpdateProgressString(idx, pgInfo.FileType, pgInfo.ChipRole, $"完成");
+                    break;
+                case G4UpgradeStage.SetAlarm:
+                    break;
+                case G4UpgradeStage.Cancelled:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            _invertersInfos[idx].RefreshTime = DateTime.Now.ToString("MM/dd-HH:mm:ss");
+            _globalStage = pgInfo.Stage;
+            _logger.Information($"[设备{pgInfo.Slave}] {pgInfo.Message}");
+
+
+            RefreshInvertersGrid();
+        }
+
+        private void UpdateProgressString(int slaveGridIdx, FirmwareFileType fileType, FirmwareChipRole chipRole, string pgString)
+        {
+            if (fileType == FirmwareFileType.Safety)
+            {
+                _invertersInfos[slaveGridIdx].Compliance_Progress = pgString;
+            }
+
+            switch (chipRole)
+            {
+                case FirmwareChipRole.ARM_OLD:
+                case FirmwareChipRole.ARM:
+                    _invertersInfos[slaveGridIdx].ARM_Progress = pgString;
+                    break;
+
+                case FirmwareChipRole.DSPM_OLD:
+                case FirmwareChipRole.DSPM:
+                    _invertersInfos[slaveGridIdx].DSPM_Progress = pgString;
+                    break;
+
+                case FirmwareChipRole.DSPS_OLD:
+                case FirmwareChipRole.DSPS:
+                    _invertersInfos[slaveGridIdx].DSPS_Progress = pgString;
+                    break;
+
+                case FirmwareChipRole.PLC_STA:
+                    _invertersInfos[slaveGridIdx].PLCSTA_Progress = pgString;
+                    break;
+            }
+
+            string statusMsg = $"进度:";
+            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].ARM_Progress))
+            {
+                statusMsg += $"[ARM:{_invertersInfos[slaveGridIdx].ARM_Progress}] ";
+            }
+            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPM_Progress))
+            {
+                statusMsg += $"[DSPM:{_invertersInfos[slaveGridIdx].DSPM_Progress}] ";
+            }
+            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPS_Progress))
+            {
+                statusMsg += $"[DSPS:{_invertersInfos[slaveGridIdx].DSPS_Progress}] ";
+            }
+            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].PLCSTA_Progress))
+            {
+                statusMsg += $"[STA:{_invertersInfos[slaveGridIdx].PLCSTA_Progress}] ";
+            }
+            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].Compliance_Progress))
+            {
+                statusMsg += $"[安规:{_invertersInfos[slaveGridIdx].Compliance_Progress}] ";
+            }
+
+            if (statusMsg.Length > 0)
+                statusMsg = statusMsg.Remove(statusMsg.Length - 1, 1);
+            _invertersInfos[slaveGridIdx].StatusMsg = statusMsg;
+        }
+
+        private string? CompareVersions(int slaveGridIdx)
+        {
+            if (_subModuleInfos == null || _subModuleInfos.Length == 0)
+            {
+                return null;
+            }
+
+            var sb = new StringBuilder();
+
+            string? importedVersion = _subModuleInfos
+                .FirstOrDefault(m => (m.FirmwareChipRole == FirmwareChipRole.ARM
+                                      || m.FirmwareChipRole == FirmwareChipRole.ARM_OLD))?
+                .FirmwareVersion;
+            string deviceVersion = _invertersInfos[slaveGridIdx].ARM_Version;
+            if (!string.IsNullOrEmpty(importedVersion)
+                && !string.IsNullOrEmpty(deviceVersion)
+                && importedVersion != deviceVersion)
+            {
+                // sb.AppendLine($"ARM: [{deviceVersion}]->[{importedVersion}]");
+                sb.Append("[ARM] ");
+            }
+
+            importedVersion = _subModuleInfos
+                .FirstOrDefault(m => (m.FirmwareChipRole == FirmwareChipRole.DSPM
+                                      || m.FirmwareChipRole == FirmwareChipRole.DSPM_OLD))?
+                .FirmwareVersion;
+            deviceVersion = _invertersInfos[slaveGridIdx].DSPM_Version;
+            if (!string.IsNullOrEmpty(importedVersion)
+                && !string.IsNullOrEmpty(deviceVersion)
+                && importedVersion != deviceVersion)
+            {
+                // sb.AppendLine($"DSPM: [{deviceVersion}]->[{importedVersion}]");
+                sb.Append("[DSPM] ");
+            }
+
+            importedVersion = _subModuleInfos
+                .FirstOrDefault(m => (m.FirmwareChipRole == FirmwareChipRole.DSPS
+                                      || m.FirmwareChipRole == FirmwareChipRole.DSPS_OLD))?
+                .FirmwareVersion;
+            deviceVersion = _invertersInfos[slaveGridIdx].DSPS_Version;
+            if (!string.IsNullOrEmpty(importedVersion)
+                && !string.IsNullOrEmpty(deviceVersion)
+                && importedVersion != deviceVersion)
+            {
+                // sb.AppendLine($"DSPS: [{deviceVersion}]->[{importedVersion}]");
+                sb.Append("[DSPS] ");
+            }
+
+            importedVersion = _subModuleInfos
+                .FirstOrDefault(m => (m.FirmwareChipRole == FirmwareChipRole.PLC_STA))?
+                .FirmwareVersion;
+            deviceVersion = _invertersInfos[slaveGridIdx].PLCSTA_Version;
+            if (!string.IsNullOrEmpty(importedVersion)
+                && !string.IsNullOrEmpty(deviceVersion)
+                && importedVersion != deviceVersion)
+            {
+                // sb.AppendLine($"PLC-STA: [{deviceVersion}]->[{importedVersion}]");
+                sb.Append("[STA] ");
+            }
+
+            return sb.ToString();
+        }
+
+
+
+        private void RefreshInvertersGrid()
+        {
+            this.BeginInvoke(() =>
+            {
+                this.InvertersInfo_DataGridView.AutoGenerateColumns = false;
+
+                if (_invertersInfos.Count == 0)
+                {
+                    this.InvertersInfo_DataGridView.DataSource = null;
+                    return;
+                }
+
+                if (this.InvertersInfo_DataGridView.DataSource == null)
+                {
+                    this.InvertersInfo_DataGridView.DataSource = _invertersInfos;
+                    return;
+                }
+
+                if (this.InvertersInfo_DataGridView.Rows.Count != _invertersInfos.Count)
+                {
+                    this.InvertersInfo_DataGridView.DataSource = null;
+                    this.InvertersInfo_DataGridView.DataSource = _invertersInfos;
+                    return;
+                }
+                else
+                {
+                    this.InvertersInfo_DataGridView.Invalidate();
+                    return;
+                }
+            });
+
+        }
+
+
+        private void btnStopUpgrade_Click(object sender, EventArgs e)
         {
             if (!IsUpgrading)
             {
@@ -348,5 +551,38 @@ namespace Sofar.G4MultiUpgrade
         }
 
         #endregion 升级信息打印
+    }
+
+
+    public class G4InverterUpgradeInfo
+    {
+        public G4InverterUpgradeInfo(byte slaveNo)
+        {
+            SlaveNo = slaveNo;
+        }
+
+        public byte SlaveNo { get; set; } = 0;
+        public string SerialNo { get; set; } = "";
+        public string ARM_Version { get; set; } = "";
+        public string DSPM_Version { get; set; } = "";
+        public string DSPS_Version { get; set; } = "";
+        // public string AFCI_Version { get; set; } = "";
+        public string PLCSTA_Version { get; set; } = "";
+        public string Compliance_Version { get; set; } = "";
+
+
+        public string ARM_Progress { get; set; } = "";
+
+        public string DSPM_Progress { get; set; } = "";
+
+        public string DSPS_Progress { get; set; } = "";
+
+        public string PLCSTA_Progress { get; set; } = "";
+
+        public string Compliance_Progress { get; set; } = "";
+
+        public string StatusMsg { get; set; } = "";
+
+        public string RefreshTime { get; set; } = "";
     }
 }

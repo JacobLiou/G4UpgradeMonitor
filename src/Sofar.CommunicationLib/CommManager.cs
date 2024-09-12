@@ -2,6 +2,7 @@
 using Sofar.CommunicationLib.Modbus;
 using Sofar.CommunicationLib.Model;
 using Sofar.ProtocolLibs.Modbus;
+using System.Collections.Generic;
 
 namespace Sofar.CommunicationLib
 {
@@ -23,20 +24,30 @@ namespace Sofar.CommunicationLib
 
         #endregion Singleton
 
-        public bool Connect(ConnectionParams connectParams)
+        public bool Connect(ConnectionParams connectParams,out Dictionary<string,bool> pairs)
         {
+            pairs = new();//初始化
+
             if (connectParams == null
                 || connectParams.IPAdressList == null
                 || connectParams.IPAdressList.Count == 0)
                 return false;
 
+            DisConnect();
+            ModbusClients = new();
             var allConnect = new List<bool>();
             for (int i = 0; i < connectParams.IPAdressList.Count; i++)
             {
                 var tcpStream = new TcpStream(i.ToString(), connectParams.IPAdressList[i], connectParams.Port);
-                allConnect.Add(tcpStream.Connect());
+                var connectState = tcpStream.Connect();
+                allConnect.Add(connectState);
                 var ModbusClient = new SofarModbusClient(tcpStream, ModbusFrameType.TCP);
                 ModbusClients.Add(ModbusClient);
+
+                if (!pairs.TryAdd(connectParams.IPAdressList[i], connectState))
+                {
+                    pairs[connectParams.IPAdressList[i]] = connectState;
+                }
             }
 
             return allConnect.All(item => item);
