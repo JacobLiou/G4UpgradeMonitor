@@ -4,7 +4,9 @@ using Sofar.CommunicationLib.Service;
 using Sofar.ProtocolLibs.FirmwareInfo;
 using Sunny.UI;
 using System.Diagnostics;
+using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using ILogger = Serilog.ILogger;
 
@@ -13,6 +15,8 @@ namespace Sofar.G4MultiUpgrade
     public partial class FrmMain : UIForm
     {
         private System.Timers.Timer? timer;
+
+        private FrmConfig frmConfig;
 
         public FrmMain()
         {
@@ -38,14 +42,20 @@ namespace Sofar.G4MultiUpgrade
             timer.Elapsed += Timer_Elapsed;
             timer.Start();
 
-            // 加载通讯列表...
-
             // 创建ListView的列
             lvConnectlist.View = View.Details;
             lvConnectlist.Columns.Add("IpAddress", 120);
             lvConnectlist.Columns.Add("State", 50);
 
-            BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
+            frmConfig = new FrmConfig();
+            if (frmConfig.ShowDialog() == DialogResult.OK)
+            {
+                LoadModbusClients();
+
+                // 加载通讯列表...
+                BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
+            }
+            RefreshInvertersGrid();
         }
 
         private void Timer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -92,10 +102,12 @@ namespace Sofar.G4MultiUpgrade
 
         private void tsmi_Comm_Click(object sender, EventArgs e)
         {
-            FrmConfig frmConfig = new FrmConfig();
             if (frmConfig.ShowDialog() == DialogResult.OK)
             {
                 LoadModbusClients();
+
+                // 加载通讯列表...
+                BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
             }
         }
 
@@ -107,8 +119,9 @@ namespace Sofar.G4MultiUpgrade
 
         private readonly ILogger _logger = Serilog.Log.Logger;
 
-        private readonly List<G4InverterUpgradeInfo> _invertersInfos = new();
+        //private readonly List<G4InverterUpgradeInfo> _invertersInfos = new() { new G4InverterUpgradeInfo(0x01) { } };
 
+        private readonly List<G4InverterUpgradeInfo> _invertersInfos = new();
 
         public bool IsUpgrading { get; private set; } = false;
 
@@ -120,6 +133,7 @@ namespace Sofar.G4MultiUpgrade
             // 遍历字典
             foreach (var kvp in dict)
             {
+
                 // 创建一个新的ListViewItem
                 ListViewItem item = new ListViewItem(kvp.Key); // 第一个参数是Key，也是主项
 
@@ -128,6 +142,11 @@ namespace Sofar.G4MultiUpgrade
 
                 // 将ListViewItem添加到ListView中
                 listView.Items.Add(item);
+
+                if (kvp.Value)
+                {
+                    _invertersInfos.Add(new G4InverterUpgradeInfo(0x01, kvp.Key));
+                }
             }
         }
 
@@ -162,7 +181,7 @@ namespace Sofar.G4MultiUpgrade
                         else versions += "; ";
                     }
                 }
-                this.rtbUpgradeLog.Text = $"{System.DateTime.Now} -->{versions}";
+                this.lblUpgradeLog.Text = versions;
                 this.txtPath.Text = filename;
                 _firmwarePath = filename;
             }
@@ -180,17 +199,6 @@ namespace Sofar.G4MultiUpgrade
 
         private void btnStartUpgrade_Click(object sender, EventArgs e)
         {
-            Task.Run(async () =>
-            {
-                foreach (var item in _upgradeService)
-                {
-                    await SingUpgrade(item);
-                }
-            });
-        }
-
-        private async Task SingUpgrade(G4UpgradeService _upgradeService)
-        {
             if (IsUpgrading)
             {
                 MessageBox.Show("已有升级任务进行中！", "错误");
@@ -203,12 +211,25 @@ namespace Sofar.G4MultiUpgrade
                 return;
             }
 
+            _dict.Clear();
+
+            foreach (var item in _upgradeService)
+            {
+                var task = SingUpgrade(item);
+                
+            }
+        }
+
+        private Dictionary<int, string> _dict = new Dictionary<int, string>();
+
+        private async Task SingUpgrade(G4UpgradeService _upgradeService)
+        {
             byte[] slaves = { 0x01 };
             //if (!GetDeviceAddresses(out byte[] slaves))
             //    return;
 
             IsUpgrading = true;
-            ClearUpgradeMsg();
+            //ClearUpgradeMsg();
             //StartBusy("正在升级G4设备");
 
             G4UpgradeConfig upgradeConfig = new G4UpgradeConfig
@@ -220,16 +241,23 @@ namespace Sofar.G4MultiUpgrade
                 BitmapSegmentSize = 100,
                 IsSofarOrBin = true,
                 UpgradeTime = null,
-                IsBroadcast = true,
+                IsBroadcast = false,
                 ResumeFromBreakPoint = false,
-                UseNew5001 = false,
+                UseNew5001 = true,
                 Use5108 = false,
+                //IPAddress = ((Sofar.CommunicationLib.Connection.TcpStream)_upgradeService._modbusClient.CommStream).RemoteEndPoint.Address.ToString()
             };
 
             //var readFinishedList = await ReadDeviceInfo(slaves);
 
             var pgReporter = new Progress<G4UpgradeProgressInfo>();
-            pgReporter.ProgressChanged += PgReporter_OnProgressChanged;
+            pgReporter.ProgressChanged += func;
+
+            void func(object? sender, G4UpgradeProgressInfo pgInfo)
+            {
+                this.PgReporter_OnProgressChanged(pgInfo, ((Sofar.CommunicationLib.Connection.TcpStream)_upgradeService._modbusClient.CommStream).RemoteEndPoint.Address.ToString());
+            };
+
             _cancellationTokenSource = new CancellationTokenSource();
 
             try
@@ -240,11 +268,12 @@ namespace Sofar.G4MultiUpgrade
                 // 升级
                 _globalStage = G4UpgradeStage.None;
 
-                await _upgradeService.G4FirmwareUpgradeAsync(new byte[] { 0x01 }, _firmwarePath!, upgradeConfig,
+                var task =  _upgradeService.G4FirmwareUpgradeAsync(new byte[] { 0x01 }, _firmwarePath!, upgradeConfig,
                     _cancellationTokenSource.Token, pgReporter);
+                await task;
 
-                var timeSpan = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds).ToString("%m");
-                AppendUpgradeMsg($"操作总耗时：{timeSpan}Min");
+                //var timeSpan = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds).ToString("%m");
+                //AppendUpgradeMsg($"操作总耗时：{timeSpan}Min");
 
                 _logger.Information("---------------G4升级结束--------------\n");
             }
@@ -261,7 +290,7 @@ namespace Sofar.G4MultiUpgrade
         }
 
 
-        private void PgReporter_OnProgressChanged(object? sender, G4UpgradeProgressInfo pgInfo)
+        private void PgReporter_OnProgressChanged(G4UpgradeProgressInfo pgInfo, string ip)
         {
             string stepName = pgInfo.Stage switch
             {
@@ -279,8 +308,10 @@ namespace Sofar.G4MultiUpgrade
             };
 
             byte slave = pgInfo.Slave;
-            int idx = _invertersInfos.FindIndex(x => x.SlaveNo == slave);
-            if (idx < 0) return;
+            //var ip = pgInfo.IP;
+            int idx = _invertersInfos.FindIndex(x => x.SlaveNo == slave && x.IP == ip);//增加IP地址的条件
+            if (idx < 0)
+                return;
 
             if (pgInfo.Failed)
             {
@@ -337,7 +368,6 @@ namespace Sofar.G4MultiUpgrade
             _globalStage = pgInfo.Stage;
             _logger.Information($"[设备{pgInfo.Slave}] {pgInfo.Message}");
 
-
             RefreshInvertersGrid();
         }
 
@@ -375,21 +405,25 @@ namespace Sofar.G4MultiUpgrade
             {
                 statusMsg += $"[ARM:{_invertersInfos[slaveGridIdx].ARM_Progress}] ";
             }
-            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPM_Progress))
+            else if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPM_Progress))
             {
                 statusMsg += $"[DSPM:{_invertersInfos[slaveGridIdx].DSPM_Progress}] ";
             }
-            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPS_Progress))
+            else if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].DSPS_Progress))
             {
                 statusMsg += $"[DSPS:{_invertersInfos[slaveGridIdx].DSPS_Progress}] ";
             }
-            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].PLCSTA_Progress))
+            else if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].PLCSTA_Progress))
             {
                 statusMsg += $"[STA:{_invertersInfos[slaveGridIdx].PLCSTA_Progress}] ";
             }
-            if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].Compliance_Progress))
+            else if (!string.IsNullOrEmpty(_invertersInfos[slaveGridIdx].Compliance_Progress))
             {
                 statusMsg += $"[安规:{_invertersInfos[slaveGridIdx].Compliance_Progress}] ";
+            }
+            else
+            {
+                statusMsg += $"[升级:{pgString}] ";
             }
 
             if (statusMsg.Length > 0)
@@ -464,6 +498,7 @@ namespace Sofar.G4MultiUpgrade
 
         private void RefreshInvertersGrid()
         {
+
             this.BeginInvoke(() =>
             {
                 this.InvertersInfo_DataGridView.AutoGenerateColumns = false;
@@ -492,7 +527,6 @@ namespace Sofar.G4MultiUpgrade
                     return;
                 }
             });
-
         }
 
 
@@ -517,38 +551,38 @@ namespace Sofar.G4MultiUpgrade
 
         #region 升级信息打印
 
-        private void rtbUpgradeLog_ContentsResized(object sender, ContentsResizedEventArgs e)
-        {
-            rtbUpgradeLog.SelectionStart = rtbUpgradeLog.Text.Length;
-            rtbUpgradeLog.ScrollToCaret();
-        }
+        //private void rtbUpgradeLog_ContentsResized(object sender, ContentsResizedEventArgs e)
+        //{
+        //    rtbUpgradeLog.SelectionStart = rtbUpgradeLog.Text.Length;
+        //    rtbUpgradeLog.ScrollToCaret();
+        //}
 
-        private void AppendUpgradeMsg(string message)
-        {
-            this.BeginInvoke(() =>
-            {
-                rtbUpgradeLog.AppendText($"{DateTime.Now.ToString("HH:mm:ss.fff")} {message}\n");
-            });
-        }
+        //private void AppendUpgradeMsg(string message)
+        //{
+        //    this.BeginInvoke(() =>
+        //    {
+        //        rtbUpgradeLog.AppendText($"{DateTime.Now.ToString("HH:mm:ss.fff")} {message}\n");
+        //    });
+        //}
 
-        private void ReplaceLastUpgradeMsg(string message)
-        {
-            this.BeginInvoke(() =>
-            {
-                string currentMsg = rtbUpgradeLog.Text;
-                int idx = currentMsg.Substring(0, currentMsg.Length - 1).LastIndexOf('\n');
-                if (idx < 0) return;
-                rtbUpgradeLog.Text = currentMsg.Substring(0, idx + 1) + $"{DateTime.Now.ToString("HH:mm:ss.fff")} {message}\n";
-            });
-        }
+        //private void ReplaceLastUpgradeMsg(string message)
+        //{
+        //    this.BeginInvoke(() =>
+        //    {
+        //        string currentMsg = rtbUpgradeLog.Text;
+        //        int idx = currentMsg.Substring(0, currentMsg.Length - 1).LastIndexOf('\n');
+        //        if (idx < 0) return;
+        //        rtbUpgradeLog.Text = currentMsg.Substring(0, idx + 1) + $"{DateTime.Now.ToString("HH:mm:ss.fff")} {message}\n";
+        //    });
+        //}
 
-        private void ClearUpgradeMsg()
-        {
-            this.BeginInvoke(() =>
-            {
-                rtbUpgradeLog.Text = String.Empty;
-            });
-        }
+        //private void ClearUpgradeMsg()
+        //{
+        //    this.BeginInvoke(() =>
+        //    {
+        //        rtbUpgradeLog.Text = String.Empty;
+        //    });
+        //}
 
         #endregion 升级信息打印
     }
@@ -561,7 +595,14 @@ namespace Sofar.G4MultiUpgrade
             SlaveNo = slaveNo;
         }
 
-        public byte SlaveNo { get; set; } = 0;
+        public G4InverterUpgradeInfo(byte slaveNo, string ip)
+        {
+            SlaveNo = slaveNo;
+            IP = ip;
+        }
+
+        public string IP { get; set; } = "";
+        public byte SlaveNo { get; set; } = 0x01;
         public string SerialNo { get; set; } = "";
         public string ARM_Version { get; set; } = "";
         public string DSPM_Version { get; set; } = "";

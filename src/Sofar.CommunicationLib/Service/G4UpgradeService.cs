@@ -5,6 +5,7 @@ using Sofar.ProtocolLibs.FirmwareInfo;
 using Sofar.ProtocolLibs.Modbus.Message.Sofar;
 using Sofar.ProtocolLibs.Utils.CRC;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Sofar.CommunicationLib.Service
 {
@@ -12,7 +13,7 @@ namespace Sofar.CommunicationLib.Service
     {
         private ILogger _logger => Log.Logger;
 
-        private SofarModbusClient? _modbusClient;
+        public SofarModbusClient? _modbusClient;
 
         public G4UpgradeService(SofarModbusClient modbusClient)
         {
@@ -104,6 +105,7 @@ namespace Sofar.CommunicationLib.Service
             {
                 G4UpgradeProgressInfo devPgInfo = new()
                 {
+                    //IP = config.IPAddress,
                     Slave = slave,
                     FileType = config.IsSofarOrBin ? FirmwareFileType.None : binPackInfo!.FirmwareFileType,
                     ChipRole = config.IsSofarOrBin ? FirmwareChipRole.None : binPackInfo!.FirmwareChipRole,
@@ -202,9 +204,9 @@ namespace Sofar.CommunicationLib.Service
                     return;
                 Thread.Sleep(500);
 
-SkipResending:
+            SkipResending:
 
-#region <4> 总校验
+                #region <4> 总校验
 
                 G4UgStep_VerifyFirmware(context, cancellationToken, crc32);
 

@@ -2,7 +2,6 @@
 using Sofar.CommunicationLib.Modbus;
 using Sofar.CommunicationLib.Model;
 using Sofar.ProtocolLibs.Modbus;
-using System.Collections.Generic;
 
 namespace Sofar.CommunicationLib
 {
@@ -11,6 +10,8 @@ namespace Sofar.CommunicationLib
         public ConnectionParams ConnectionParams { get; set; }
 
         public List<SofarModbusClient> ModbusClients { get; set; } = new();
+
+        public TinyBytesStream? RtuStream { get; protected set; } = null;
 
         #region Singleton
 
@@ -24,7 +25,7 @@ namespace Sofar.CommunicationLib
 
         #endregion Singleton
 
-        public bool Connect(ConnectionParams connectParams,out Dictionary<string,bool> pairs)
+        public bool Connect(ConnectionParams connectParams, out Dictionary<string, bool> pairs)
         {
             pairs = new();//初始化
 
@@ -50,6 +51,7 @@ namespace Sofar.CommunicationLib
                 }
             }
 
+            LogTcpStream();
             return allConnect.All(item => item);
         }
 
@@ -62,5 +64,32 @@ namespace Sofar.CommunicationLib
                 client.CommStream.Dispose();
             }
         }
+
+
+        #region 报文记录
+
+        private void LogTcpStream()
+        {
+            if (ModbusClients != null && ModbusClients.Count >= 1)
+            {
+                foreach (var ModbusClient in ModbusClients)
+                {
+                    ModbusClient.ModbusDataSent += OnModbusDataSent;
+                    ModbusClient.ModbusDataReceived += OnModbusDataReceived;
+                }
+            }
+        }
+
+        private void OnModbusDataReceived(object? sender, DataTransactionEventArgs e)
+        {
+            Serilog.Log.Information($"[{RtuStream?.Identifier}] [Rx] [{BitConverter.ToString(e.Data).Replace('-', ' ')}]\n");
+        }
+
+        private void OnModbusDataSent(object? sender, DataTransactionEventArgs e)
+        {
+            Serilog.Log.Information($"[{RtuStream?.Identifier}] [Tx] [{BitConverter.ToString(e.Data).Replace('-', ' ')}]\n");
+        }
+
+        #endregion
     }
 }

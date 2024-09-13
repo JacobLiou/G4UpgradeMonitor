@@ -60,6 +60,8 @@ namespace Sofar.CommunicationLib.Model
         public bool Use5108 { get; set; } = true;
 
         public int SendPackReportIntervals { get; set; } = 10;
+
+        //public string IPAddress { get; set; } = "";
     }
 
     public enum G4UpgradeStage
@@ -78,7 +80,9 @@ namespace Sofar.CommunicationLib.Model
 
     public class G4UpgradeProgressInfo
     {
-        public byte Slave { get; set; } = 0;
+        public string IP { get; set; } = "";
+
+        public byte Slave { get; set; } = 0x01;
 
         public FirmwareFileType FileType { get; set; }
 
