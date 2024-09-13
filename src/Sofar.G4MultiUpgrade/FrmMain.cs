@@ -4,10 +4,7 @@ using Sofar.CommunicationLib.Service;
 using Sofar.ProtocolLibs.FirmwareInfo;
 using Sunny.UI;
 using System.Diagnostics;
-using System.Net;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using ILogger = Serilog.ILogger;
 
 namespace Sofar.G4MultiUpgrade
@@ -16,7 +13,7 @@ namespace Sofar.G4MultiUpgrade
     {
         private System.Timers.Timer? timer;
 
-        private FrmConfig frmConfig;
+        private FrmConfig? frmConfig;
 
         public FrmMain()
         {
@@ -55,6 +52,7 @@ namespace Sofar.G4MultiUpgrade
                 // 加载通讯列表...
                 BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
             }
+
             RefreshInvertersGrid();
         }
 
@@ -216,7 +214,7 @@ namespace Sofar.G4MultiUpgrade
             foreach (var item in _upgradeService)
             {
                 var task = SingUpgrade(item);
-                
+
             }
         }
 
@@ -255,7 +253,7 @@ namespace Sofar.G4MultiUpgrade
 
             void func(object? sender, G4UpgradeProgressInfo pgInfo)
             {
-                this.PgReporter_OnProgressChanged(pgInfo, ((Sofar.CommunicationLib.Connection.TcpStream)_upgradeService._modbusClient.CommStream).RemoteEndPoint.Address.ToString());
+                this.PgReporter_OnProgressChanged(pgInfo, ((Sofar.CommunicationLib.Connection.TcpStream)_upgradeService.ModbusClient.CommStream).RemoteEndPoint.Address.ToString());
             };
 
             _cancellationTokenSource = new CancellationTokenSource();
@@ -268,7 +266,7 @@ namespace Sofar.G4MultiUpgrade
                 // 升级
                 _globalStage = G4UpgradeStage.None;
 
-                var task =  _upgradeService.G4FirmwareUpgradeAsync(new byte[] { 0x01 }, _firmwarePath!, upgradeConfig,
+                var task = _upgradeService.G4FirmwareUpgradeAsync(new byte[] { 0x01 }, _firmwarePath!, upgradeConfig,
                     _cancellationTokenSource.Token, pgReporter);
                 await task;
 

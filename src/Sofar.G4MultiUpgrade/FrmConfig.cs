@@ -9,7 +9,7 @@ namespace Sofar.G4MultiUpgrade
 {
     public partial class FrmConfig : UIForm
     {
-        private ConnectionParams? _connectParams;
+        private ConnectionParams _connectParams = new();
 
         private readonly string _connectConfigFile = "Connection.json";
 
@@ -24,11 +24,6 @@ namespace Sofar.G4MultiUpgrade
 
         private void FrmConfig_Load(object? sender, EventArgs e)
         {
-            Init();
-        }
-
-        private void Init()
-        {
             _connectParams = JsonFileHelper.LoadConfig<ConnectionParams>(_connectConfigFile) ?? new ConnectionParams();
 
             // IP
@@ -42,64 +37,18 @@ namespace Sofar.G4MultiUpgrade
         {
             try
             {
-                if (this.btnConnect.Text == "连接")
+                SaveConfig();
+
+                CommManager.Instance.Connect(_connectParams, out var _array);
+                if (_array == null) return;
+                rtbPrintinfo.Text = string.Empty;
+                ConnectArray = _array;
+                foreach (var item in _array)
                 {
-                    _connectParams.IPAdressList.Clear();
-                    _connectParams.Port = int.Parse(txtIpPort.Text);
-
-                    int continueNum = Convert.ToUInt16(nudNumber.Value);
-                    string ip = txtIpAddress.Text.Trim();
-                    //_connectParams.IPAdressList.Add(ip);
-                    for (int i = 1; i <= continueNum; i++)
-                    {
-                        _connectParams.IPAdressList.Add(ip);
-
-                        ip = IncrementLastOctet(ip);    //计算下一个IP地址
-                    }
-
-                    var _array = new Dictionary<string, bool>();
-
-                    if (CommManager.Instance.Connect(_connectParams,out _array))
-                    {
-                        this.btnConnect.Text = "断开连接";
-                        ConnectArray = _array;
-                    }
-                    else
-                    {
-                        //再次检查
-                        bool checkReuslt = false;
-                        foreach (var item in _array)
-                        {
-                            if (item.Value)
-                            {
-                                checkReuslt = true;
-                                ConnectArray.TryAdd(item.Key, true);
-                            }
-                            else if(!item.Value && ConnectArray.ContainsKey(item.Key))
-                            {
-                               ConnectArray.Remove(item.Key);
-                            }
-                        }
-
-                        if (checkReuslt)
-                        {
-                            this.btnConnect.Text = "断开连接";
-                        }
-                        else
-                        {
-                            MessageBox.Show("启动连接错误");
-                        }
-                    }
-
-                    foreach (var item in ConnectArray)
-                    {
+                    if (item.Value)
                         rtbPrintinfo.Text += $"IP:{item.Key},连接成功 \r\n";
-                    }
-                }
-                else if (this.btnConnect.Text == "断开连接")
-                {
-                    this.btnConnect.Text = "连接";
-                    CommManager.Instance.DisConnect();
+                    else
+                        rtbPrintinfo.Text += $"IP:{item.Key},连接失败 \r\n";
                 }
             }
             catch (Exception exception)
@@ -107,6 +56,39 @@ namespace Sofar.G4MultiUpgrade
                 Debug.WriteLine(exception);
                 Serilog.Log.Error($"启动连接错误:\n{exception}");
             }
+        }
+
+        private void SaveConfig()
+        {
+            _connectParams.IPAdressList.Clear();
+            _connectParams.Port = int.Parse(txtIpPort.Text);
+
+            int continueNum = Convert.ToUInt16(nudNumber.Value);
+            string ip = txtIpAddress.Text.Trim();
+            //_connectParams.IPAdressList.Add(ip);
+            for (int i = 1; i <= continueNum; i++)
+            {
+                _connectParams.IPAdressList.Add(ip);
+
+                ip = IncrementLastOctet(ip);    //计算下一个IP地址
+            }
+
+            JsonFileHelper.SaveConfig(_connectConfigFile, _connectParams);
+        }
+
+        private void btnDisConnect_Click(object sender, EventArgs e)
+        {
+            CommManager.Instance.DisConnect();
+            var disConnectArray = new Dictionary<string, bool>();
+            foreach (var keyValue in ConnectArray)
+            {
+                {
+                    disConnectArray.Add(keyValue.Key, false);
+                }
+            }
+
+            ConnectArray = disConnectArray;
+            rtbPrintinfo.Text = "全部断开连接";
         }
 
         private string IncrementLastOctet(string ipAddress)
@@ -155,7 +137,9 @@ namespace Sofar.G4MultiUpgrade
 
         private void uiButton_Cancel_Click(object sender, EventArgs e)
         {
-            this.DialogResult= DialogResult.Cancel;
+            this.DialogResult = DialogResult.Cancel;
         }
+
+
     }
 }

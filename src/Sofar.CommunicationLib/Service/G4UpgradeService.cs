@@ -5,7 +5,6 @@ using Sofar.ProtocolLibs.FirmwareInfo;
 using Sofar.ProtocolLibs.Modbus.Message.Sofar;
 using Sofar.ProtocolLibs.Utils.CRC;
 using System.Diagnostics;
-using System.Threading;
 
 namespace Sofar.CommunicationLib.Service
 {
@@ -13,11 +12,11 @@ namespace Sofar.CommunicationLib.Service
     {
         private ILogger _logger => Log.Logger;
 
-        public SofarModbusClient? _modbusClient;
+        public SofarModbusClient? ModbusClient { get; }
 
         public G4UpgradeService(SofarModbusClient modbusClient)
         {
-            _modbusClient = modbusClient;
+            ModbusClient = modbusClient;
         }
 
         private class G4UpgradeContext
@@ -40,7 +39,7 @@ namespace Sofar.CommunicationLib.Service
             //     throw new InvalidOperationException("Another Modbus long-running task is in progress.");
             // }
 
-            if (_modbusClient == null)
+            if (ModbusClient == null)
             {
                 throw new InvalidOperationException("No Modbus Connection.");
             }
@@ -204,9 +203,9 @@ namespace Sofar.CommunicationLib.Service
                     return;
                 Thread.Sleep(500);
 
-            SkipResending:
+SkipResending:
 
-                #region <4> 总校验
+#region <4> 总校验
 
                 G4UgStep_VerifyFirmware(context, cancellationToken, crc32);
 
@@ -283,8 +282,8 @@ namespace Sofar.CommunicationLib.Service
 
                     WriteFileStartResponse? response;
                     response = ctx.Config.UseNew5001 ?
-                        _modbusClient.G4StartWritingFile(slave, firmwareName, (uint)firmwareSize, crc32) :
-                        _modbusClient.G4StartWritingFile_Old(slave, firmwareName, (uint)firmwareSize, crc32);
+                        ModbusClient.G4StartWritingFile(slave, firmwareName, (uint)firmwareSize, crc32) :
+                        ModbusClient.G4StartWritingFile_Old(slave, firmwareName, (uint)firmwareSize, crc32);
 
                     if (response != null && (response.ResultCode == 0 || response.ResultCode == 1))
                     {
@@ -364,7 +363,7 @@ namespace Sofar.CommunicationLib.Service
                             //
                             // _logger.Debug($"Sending Interval: {t1 - t2}ms");
 
-                            var response = _modbusClient.G4WriteFileData(slave, firmwareBytes.Skip(breakpoint + i * ctx.Config.SendingSegmentSize).Take(currentSize).ToArray(),
+                            var response = ModbusClient.G4WriteFileData(slave, firmwareBytes.Skip(breakpoint + i * ctx.Config.SendingSegmentSize).Take(currentSize).ToArray(),
                                (uint)(i * ctx.Config.SendingSegmentSize), crc32);
 
                             // t2 = DateTimeOffset.Now.ToUnixTimeMilliseconds();
@@ -426,7 +425,7 @@ namespace Sofar.CommunicationLib.Service
         private bool G4BroadcastFileData(byte[] fileSegmentBytes, uint offset, uint fileCrc32)
         {
             var requestEntity = new WriteFileDataRequest(fileSegmentBytes, offset, fileCrc32);
-            return _modbusClient.ModbusTryBroadcast(requestEntity);
+            return ModbusClient.ModbusTryBroadcast(requestEntity);
         }
 
         private void G4UgStep_ReadFirmBitmap(in G4UpgradeContext ctx, CancellationToken cancellationToken,
@@ -463,13 +462,13 @@ namespace Sofar.CommunicationLib.Service
 
                         if (ctx.Config.Use5108)
                         {
-                            var response = _modbusClient.G4ReadFileBitmap(slave, (uint)currentSegmentIdx, (ushort)currentSegmentSize);
+                            var response = ModbusClient.G4ReadFileBitmap(slave, (uint)currentSegmentIdx, (ushort)currentSegmentSize);
                             if (response != null && response.BitmapSegmentSize == currentSegmentSize)
                                 bitmapBytes = response.BitmapBytes;
                         }
                         else
                         {
-                            var response = _modbusClient.G4ReadFileBitmap_Old(slave, (uint)currentSegmentIdx, (ushort)currentSegmentSize);
+                            var response = ModbusClient.G4ReadFileBitmap_Old(slave, (uint)currentSegmentIdx, (ushort)currentSegmentSize);
                             if (response != null && response.BitmapSegmentSize == currentSegmentSize)
                                 bitmapBytes = response.BitmapBytes;
                         }
@@ -644,7 +643,7 @@ namespace Sofar.CommunicationLib.Service
                 {
                     _logger.Information($"设备{slave}, 固件校验");
 
-                    var response = _modbusClient.G4VerifyTransferredFile(slave, crc32);
+                    var response = ModbusClient.G4VerifyTransferredFile(slave, crc32);
                     if (response != null && response.FileCrc32 == crc32)
                     {
                         // 校验成功
@@ -685,7 +684,7 @@ namespace Sofar.CommunicationLib.Service
 
                 for (int retry = 0; retry < ctx.Config.RequestMaxTries; retry++)
                 {
-                    var response = _modbusClient.G4SetUpgradeTime(slave, ctx.Config.UpgradeTime.Value);
+                    var response = ModbusClient.G4SetUpgradeTime(slave, ctx.Config.UpgradeTime.Value);
                     if (response != null)
                     {
                         // 设置成功
@@ -722,7 +721,7 @@ namespace Sofar.CommunicationLib.Service
                 {
                     _logger.Information($"设备{slave}, 启动升级");
 
-                    var response = _modbusClient.G4StartUpgrade(slave);
+                    var response = ModbusClient.G4StartUpgrade(slave);
                     if (response != null)
                     {
                         // 启动成功
@@ -811,7 +810,7 @@ namespace Sofar.CommunicationLib.Service
                         checkProgressInfo.ChipRole = chipRole;
 
                         _logger.Information($"设备{slave}, 查询进度");
-                        var response = _modbusClient.G4CheckUpgradeStatus_Progress(slave, (byte)fileType, (byte)chipRole);
+                        var response = ModbusClient.G4CheckUpgradeStatus_Progress(slave, (byte)fileType, (byte)chipRole);
                         if (response != null
                             && response.FileType == (byte)fileType
                             && response.ChipRole == (byte)chipRole

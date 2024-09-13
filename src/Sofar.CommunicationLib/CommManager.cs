@@ -7,7 +7,7 @@ namespace Sofar.CommunicationLib
 {
     public class CommManager
     {
-        public ConnectionParams ConnectionParams { get; set; }
+        public ConnectionParams ConnectionParams { get; set; } = new();
 
         public List<SofarModbusClient> ModbusClients { get; set; } = new();
 
@@ -35,14 +35,17 @@ namespace Sofar.CommunicationLib
                 return false;
 
             DisConnect();
-            ModbusClients = new();
+
             var allConnect = new List<bool>();
             for (int i = 0; i < connectParams.IPAdressList.Count; i++)
             {
                 var tcpStream = new TcpStream(i.ToString(), connectParams.IPAdressList[i], connectParams.Port);
+                var ModbusClient = new SofarModbusClient(tcpStream, ModbusFrameType.TCP);
+                ModbusClient.ModbusDataSent += OnModbusDataSent;
+                ModbusClient.ModbusDataReceived += OnModbusDataReceived;
+
                 var connectState = tcpStream.Connect();
                 allConnect.Add(connectState);
-                var ModbusClient = new SofarModbusClient(tcpStream, ModbusFrameType.TCP);
                 ModbusClients.Add(ModbusClient);
 
                 if (!pairs.TryAdd(connectParams.IPAdressList[i], connectState))
@@ -51,7 +54,6 @@ namespace Sofar.CommunicationLib
                 }
             }
 
-            LogTcpStream();
             return allConnect.All(item => item);
         }
 
@@ -63,22 +65,12 @@ namespace Sofar.CommunicationLib
             {
                 client.CommStream.Dispose();
             }
+
+            ModbusClients.Clear();
         }
 
 
         #region 报文记录
-
-        private void LogTcpStream()
-        {
-            if (ModbusClients != null && ModbusClients.Count >= 1)
-            {
-                foreach (var ModbusClient in ModbusClients)
-                {
-                    ModbusClient.ModbusDataSent += OnModbusDataSent;
-                    ModbusClient.ModbusDataReceived += OnModbusDataReceived;
-                }
-            }
-        }
 
         private void OnModbusDataReceived(object? sender, DataTransactionEventArgs e)
         {
