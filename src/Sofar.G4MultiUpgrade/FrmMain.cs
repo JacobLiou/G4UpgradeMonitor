@@ -50,6 +50,7 @@ namespace Sofar.G4MultiUpgrade
                 LoadModbusClients();
 
                 // 加载通讯列表...
+
                 BindDictionaryToListView(FrmConfig.ConnectArray, lvConnectlist);
             }
 
@@ -119,7 +120,7 @@ namespace Sofar.G4MultiUpgrade
 
         //private readonly List<G4InverterUpgradeInfo> _invertersInfos = new() { new G4InverterUpgradeInfo(0x01) { } };
 
-        private readonly List<G4InverterUpgradeInfo> _invertersInfos = new();
+        private List<G4InverterUpgradeInfo> _invertersInfos = new();
 
         public bool IsUpgrading { get; private set; } = false;
 
@@ -127,6 +128,7 @@ namespace Sofar.G4MultiUpgrade
         {
             // 清除ListView中现有的项
             listView.Items.Clear();
+            _invertersInfos = new();
 
             // 遍历字典
             foreach (var kvp in dict)
@@ -194,6 +196,8 @@ namespace Sofar.G4MultiUpgrade
 
         private G4UpgradeStage _globalStage = G4UpgradeStage.None;
         private CancellationTokenSource _cancellationTokenSource;
+        private List<CancellationTokenSource> _cancellationTokenSourceList;
+
 
         private void btnStartUpgrade_Click(object sender, EventArgs e)
         {
@@ -211,6 +215,7 @@ namespace Sofar.G4MultiUpgrade
 
             _dict.Clear();
 
+            _cancellationTokenSourceList =  new List<CancellationTokenSource>();
             foreach (var item in _upgradeService)
             {
                 var task = SingUpgrade(item);
@@ -257,7 +262,7 @@ namespace Sofar.G4MultiUpgrade
             };
 
             _cancellationTokenSource = new CancellationTokenSource();
-
+            _cancellationTokenSourceList.Add(_cancellationTokenSource);
             try
             {
                 _logger.Information("\n---------------G4升级开始--------------");
@@ -541,6 +546,14 @@ namespace Sofar.G4MultiUpgrade
                 return;
             }
 
+            if (_cancellationTokenSourceList.Count>=1)
+            {
+                foreach (var _cts in _cancellationTokenSourceList)
+                {
+                    _cts.Cancel(false);
+                }
+            }
+            else
             _cancellationTokenSource.Cancel(false);
             IsUpgrading = false;
         }

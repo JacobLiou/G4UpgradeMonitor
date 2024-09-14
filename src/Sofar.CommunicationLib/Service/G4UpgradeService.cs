@@ -71,7 +71,7 @@ namespace Sofar.CommunicationLib.Service
 
             SofarPackageInfoV2? sofarPackInfo = null;
             BinFirmwareInfoV3? binPackInfo = null;
-            string firmwareName = "";
+            string firmwareName = Path.GetFileName(firmwarePath);
             byte[] firmwareBytes = null;
 
             bool isSofar = false;
@@ -80,12 +80,12 @@ namespace Sofar.CommunicationLib.Service
                 isSofar = true;
                 firmwareBytes = File.ReadAllBytes(firmwarePath);
                 sofarPackInfo = new SofarPackageInfoV2(firmwareBytes.TakeLast(SofarPackageInfoV2.SIGNATURE_SIZE).ToArray());
-                firmwareName = sofarPackInfo.PackageName;
+                //firmwareName = sofarPackInfo.PackageName;
             }
             else if (firmwarePath.EndsWith(".bin"))
             {
                 binPackInfo = new BinFirmwareInfoV3(firmwareBytes.TakeLast(BinFirmwareInfoV3.SIGNATURE_SIZE).ToArray());
-                firmwareName = binPackInfo.ProjectName;
+                //firmwareName = binPackInfo.ProjectName;
             }
             else
             {
